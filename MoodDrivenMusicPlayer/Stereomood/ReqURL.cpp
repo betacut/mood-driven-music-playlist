@@ -41,7 +41,7 @@ ReqURL::ReqURL(){
 1) Set mood, timestamp and nonce.
 2) Build and return final url.
 ---------------------------------------------------------*/
-QString ReqURL::setMood(QString newMood){
+QString ReqURL::setMood(QString newMood){ 
     moodValue = newMood;
     timestampValue = QString::number(time(&timer));
     nonceValue = QString::number(rand() % 10000 + 1);

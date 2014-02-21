@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>600</width>
-    <height>406</height>
+    <height>414</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,6 +26,9 @@
     <property name="title">
      <string>Mood Detection</string>
     </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
     <widget class="QLabel" name="image_mood">
      <property name="geometry">
       <rect>
@@ -42,14 +45,23 @@
     <widget class="QLabel" name="label_mood">
      <property name="geometry">
       <rect>
-       <x>14</x>
+       <x>13</x>
        <y>80</y>
        <width>71</width>
        <height>25</height>
       </rect>
      </property>
+     <property name="font">
+      <font>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
      <property name="text">
-      <string>Waiting...</string>
+      <string/>
      </property>
      <property name="textFormat">
       <enum>Qt::RichText</enum>
@@ -69,13 +81,16 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>120</y>
+      <y>130</y>
       <width>581</width>
       <height>251</height>
      </rect>
     </property>
     <property name="title">
      <string>Player Control</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
     <widget class="QListWidget" name="listWidged_playlist">
      <property name="geometry">
@@ -169,8 +184,130 @@
      </rect>
     </property>
     <property name="title">
-     <string>Info</string>
+     <string>Mood Control</string>
     </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="flat">
+     <bool>false</bool>
+    </property>
+    <property name="checkable">
+     <bool>false</bool>
+    </property>
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="geometry">
+      <rect>
+       <x>320</x>
+       <y>20</y>
+       <width>141</width>
+       <height>81</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Detection Suite:</string>
+     </property>
+     <widget class="QRadioButton" name="radio_affectiv">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>25</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Expressiv Suite</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radio_expressiv">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Affectiv Suite</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_5">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>20</y>
+       <width>301</width>
+       <height>80</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Emotiv Engine:</string>
+     </property>
+     <widget class="QPushButton" name="btn_connect">
+      <property name="geometry">
+       <rect>
+        <x>190</x>
+        <y>20</y>
+        <width>111</width>
+        <height>32</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Connect</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btn_disconnect">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>190</x>
+        <y>45</y>
+        <width>112</width>
+        <height>32</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Disconnect</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radio_emoEngine">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>25</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>EmoEngine</string>
+      </property>
+     </widget>
+     <widget class="QRadioButton" name="radio_emoComposer">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>50</y>
+        <width>121</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>EmoComposer</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
    </widget>
    <zorder>groupBox_2</zorder>
    <zorder>groupBox</zorder>

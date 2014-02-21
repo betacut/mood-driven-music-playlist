@@ -1,10 +1,6 @@
 #ifndef EPOCWORKER_H
 #define EPOCWORKER_H
 
-// TODO: EmoComposer or Engine
-// TODO: Expressiv or Affectiv Suit
-// Reconnect
-
 #include <QString>
 #include <QObject>
 #include <QThread>
@@ -17,9 +13,9 @@
 #define EMOCOMPOSER_PORT    1726
 
 typedef enum Mood_enum {
-    UNKNOWN = -1, HAPPY, SAD, RELAXED, STRESSED
+    UNKNOWN = 0, HAPPY, SAD, RELAXED, STRESSED
 } Mood;
-const QString moodString[] = {"happy","sad","relaxed", "stressed"};
+const QString moodString[] = {"unknown","happy","sad","relaxed", "stressed"};
 
 /**
  * @brief The EpocHandler class
@@ -32,23 +28,26 @@ public:
     virtual ~EpocWorker();
 
 signals:
-    void connectionChanged(QString);
+    void connectionChanged(bool);
     void moodChanged(QString);
 
 public slots:
-    void connect();
-    void addUser();
+    void setDetectionSuite(unsigned int);
+    void connect(unsigned int);
+    //void addUser();
     void monitorEmotionState();
     void disconnect();
 
 private:
     QThread *thread;
+    unsigned int detectionSuite;
     unsigned int userID;
     bool connected;
     EmoEngineEventHandle emoEvent;
     EmoStateHandle emoState;
     Mood lastMood;
 
+    void addUser();
     void createCache();
     void clearCache();
 };

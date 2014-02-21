@@ -16,7 +16,13 @@ public:
     explicit GUI(QObject *parent = 0);
     virtual ~GUI();
 
+signals:
+    void detectionSuiteChanged(unsigned int);
+    void connectRequested(unsigned int);
+    void disconnectRequested();
+
 public slots:
+    void setEmoConnection(bool);
     void setMood(QString);
     void setPlaylist(QVector<Song> playlist);
     void showStatusMassage(QString msg);

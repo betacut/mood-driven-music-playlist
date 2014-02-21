@@ -7,6 +7,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->image_cover->setPixmap(QPixmap(MainWindow::DEFAULT_IMAGE_STR));
+    connect(ui->radio_expressiv, SIGNAL(toggled(bool)),
+            this, SLOT(on_radio_detection_toggled(bool)));
 
     /**
      * NOTE:    QTMultimedia Module + -dev
@@ -209,15 +211,77 @@ void MainWindow::setPlaylist(QVector<Song> newPlaylist)
 }
 
 /**
- * @brief MainWindow::showSatusMassage
+ * @brief MainWindow::setEmoControls
+ * @param connected
+ */
+void MainWindow::setEmoControls(bool connected)
+{
+    if (connected)
+    {
+        ui->radio_emoEngine->setDisabled(true);
+        ui->radio_emoComposer->setDisabled(true);
+        ui->btn_connect->setDisabled(true);
+        ui->btn_disconnect->setEnabled(true);
+    }
+    else
+    {
+        ui->radio_emoEngine->setEnabled(true);
+        ui->radio_emoComposer->setEnabled(true);
+        ui->btn_connect->setEnabled(true);
+        ui->btn_disconnect->setDisabled(true);
+    }
+}
+
+/**
+ * @brief MainWindow::showStatusMassage
  * @param msg
  */
-void MainWindow::showSatusMassage(QString msg) {
+void MainWindow::showStatusMassage(QString msg) {
     ui->statusBar->showMessage(msg);
 }
 
 
 /***************************CLICK-HANDLER********************************/
+
+void MainWindow::on_radio_detection_toggled(bool toggle)
+{
+    if (!toggle) {
+        qDebug() << "[Pressed] Expressiv Suite";
+        emit detectionSuiteChanged(0);
+    } else {
+        qDebug() << "[Pressed] Affectiv Suite";
+        emit detectionSuiteChanged(1);
+    }
+
+
+}
+
+void MainWindow::on_btn_connect_clicked()
+{
+    qDebug() << "[Pressed] connect";
+
+    ui->radio_emoEngine->setDisabled(true);
+    ui->radio_emoComposer->setDisabled(true);
+    ui->btn_connect->setDisabled(true);
+    ui->btn_disconnect->setDisabled(true);
+
+    if (this->ui->radio_emoEngine->isChecked())
+        emit connectRequested(0);
+    else
+        emit connectRequested(1);
+}
+
+void MainWindow::on_btn_disconnect_clicked()
+{
+    qDebug() << "[Pressed] disconnect";
+
+    ui->radio_emoEngine->setDisabled(true);
+    ui->radio_emoComposer->setDisabled(true);
+    ui->btn_connect->setDisabled(true);
+    ui->btn_disconnect->setDisabled(true);
+
+    emit disconnectRequested();
+}
 
 void MainWindow::on_button_play_clicked()
 {

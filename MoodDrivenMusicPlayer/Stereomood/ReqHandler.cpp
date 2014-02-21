@@ -15,6 +15,7 @@ ReqHandler::~ReqHandler() {}
 4) Execute request
 ---------------------------------------------------------*/
 void ReqHandler::execRequest(QString mood){
+    if (mood == "unknown") return;
 
     QString urlAsString = reqURL.setMood(mood);
     QUrl url(urlAsString.toStdString().c_str());

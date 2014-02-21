@@ -9,11 +9,25 @@ GUI::GUI(QObject *parent) :
 {
     window = new MainWindow;
     window->show();
+
+    QObject::connect(window, SIGNAL(detectionSuiteChanged(unsigned int)),
+            this, SIGNAL(detectionSuiteChanged(unsigned int)));
+    QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
+            this, SIGNAL(connectRequested(unsigned int)));
+    QObject::connect(window, SIGNAL(disconnectRequested()),
+            this, SIGNAL(disconnectRequested()));
 }
 
 GUI::~GUI()
 {
     delete window;
+}
+
+void GUI::setEmoConnection(bool connection)
+{
+    window->setEmoControls(connection);
+    if (connection) window->showStatusMassage("Connected to Emotiv Engine. Detect Mood...");
+    else            window->showStatusMassage("Not connected to Emotiv Engine");
 }
 
 void GUI::setMood(QString newMood)
@@ -28,5 +42,5 @@ void GUI::setPlaylist(QVector<Song> playlist)
 
 void GUI::showStatusMassage(QString msg)
 {
-    window->showSatusMassage(msg);
+    window->showStatusMassage(msg);
 }

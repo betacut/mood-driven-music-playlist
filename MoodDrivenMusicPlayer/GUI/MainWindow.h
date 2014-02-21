@@ -27,19 +27,28 @@ public:
     ~MainWindow();
     void setMood(QString);
     void setPlaylist(QVector<Song>);
-    void showSatusMassage(QString);
-    
+    void setEmoControls(bool);
+    void showStatusMassage(QString);
+
+signals:
+    void detectionSuiteChanged(unsigned int);
+    void connectRequested(unsigned int);
+    void disconnectRequested();
+
 private slots:
     void slot_netwManagerFinished(QNetworkReply *);
     void slot_playerErrorOccured(QMediaPlayer::Error);
     void slot_playerMediaChanged(const QMediaContent &);
     void slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus);
     void slot_playerStateChanged(QMediaPlayer::State);
-    void on_button_play_clicked();
-    void on_button_next_clicked();
     void loadImage(QString);
     void updateSongInfo();
+    void on_radio_detection_toggled(bool);
+    void on_btn_connect_clicked();
+    void on_btn_disconnect_clicked();
     void on_button_prev_clicked();
+    void on_button_next_clicked();
+    void on_button_play_clicked();
 
 private:
     static const QString DEFAULT_IMAGE_STR;

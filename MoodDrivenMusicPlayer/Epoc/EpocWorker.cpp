@@ -5,7 +5,7 @@
 #include "GUI/GUI.h"
 
 EpocWorker::EpocWorker(QObject *parent) :
-    QObject(parent), userID(0), connected(false), lastMood(UNKNOWN)
+    QObject(parent), detectionSuite(0), userID(0), connected(false), lastMood(UNKNOWN)
 {
     // Create thread to handle connection to emotiv engine
     thread = new QThread();
@@ -24,25 +24,62 @@ EpocWorker::~EpocWorker()
  * Public slots *
  *******************/
 
-void EpocWorker::connect()
+void EpocWorker::setDetectionSuite(unsigned int newSuite)
 {
-    if(EE_EngineRemoteConnect(EMOCOMPOSER_ADDRESS, EMOCOMPOSER_PORT) == EDK_OK)
-    {
-        std::cout << "Connected to EmoComposer!" << std::endl;
-        connected = true;
+    detectionSuite = newSuite;
 
-        std::cout << "Start receiving mood data!\n" << std::endl;
-        createCache();
-    }
-    else
+    qDebug() << "[Emotiv] Detection Suite changed";
+}
+
+void EpocWorker::connect(unsigned int connectionType)
+{
+    switch (connectionType)
     {
-        std::cout << "Could not connect to EmoComposer! - " << EMOCOMPOSER_ADDRESS << ":" << EMOCOMPOSER_PORT << std::endl;
-        connected = false;
+        case 0:
+        {
+            if(EE_EngineConnect() == EDK_OK)
+            {
+                qDebug() << "Connected to EmoEngine!";
+                connected = true;
+
+                qDebug() << "Start receiving mood data!";
+                createCache();
+            }
+            else
+            {
+                qDebug() << "Could not connect to EmoEngine!";
+                connected = false;
+            }
+        }
+        break;
+        case 1:
+        {
+            if(EE_EngineRemoteConnect(EMOCOMPOSER_ADDRESS, EMOCOMPOSER_PORT) == EDK_OK)
+            {
+                qDebug() << "Connected to EmoComposer!";
+                connected = true;
+
+                qDebug() << "Start receiving mood data!";
+                createCache();
+            }
+            else
+            {
+                qDebug() << "Could not connect to EmoComposer! - " << EMOCOMPOSER_ADDRESS << ":" << EMOCOMPOSER_PORT;
+                connected = false;
+            }
+        }
+        break;
+        default:
+        {
+          qWarning() <<"Invalid option!";
+        }
+        break;
     }
+
+    emit connectionChanged(connected);
 
     // Notify
-    if (connected) emit connectionChanged("Connected to Emotiv Engine. Detect Mood...");
-    else           emit connectionChanged("Could not connect to Emotiv Engine");
+    if (connected) addUser();
 }
 
 void EpocWorker::addUser()
@@ -50,11 +87,12 @@ void EpocWorker::addUser()
     int eventErrorCode = 0;
     int userErrorCode = 0;
     EE_Event_t eventType;
-    bool userAdded = false;
+    bool userAdded;
 
     while (connected && !userAdded)
     {
         eventErrorCode = EE_EngineGetNextEvent(emoEvent);
+        qDebug() << "eventErrorCode " << eventErrorCode;
         if (eventErrorCode == EDK_OK)
         {
             eventType = EE_EmoEngineEventGetType(emoEvent);
@@ -84,7 +122,6 @@ void EpocWorker::monitorEmotionState()
     EE_Event_t eventType;
     Mood mood;
 
-    //while (connected && !kbhit())
     while (connected)
     {
         eventErrorCode = EE_EngineGetNextEvent(emoEvent);
@@ -102,38 +139,60 @@ void EpocWorker::monitorEmotionState()
                 const float timestamp = ES_GetTimeFromStart(emoState);
                 std::cout <<"New EmoState from user " << userID << " at " << timestamp << std::endl;
 
-                // Read expressiv state
-                std::map<EE_ExpressivAlgo_t, float> expressivStates;
-                EE_ExpressivAlgo_t lowerFaceAction = ES_ExpressivGetLowerFaceAction(emoState);
-                float			   lowerFacePower  = ES_ExpressivGetLowerFaceActionPower(emoState);
-                expressivStates[lowerFaceAction] = lowerFacePower;
+                switch (detectionSuite)
+                {
+                    // Expressiv Suite
+                    case 0:
+                    {
+                        // Read expressiv state
+                        std::map<EE_ExpressivAlgo_t, float> expressivStates;
+                        EE_ExpressivAlgo_t lowerFaceAction = ES_ExpressivGetLowerFaceAction(emoState);
+                        float			   lowerFacePower  = ES_ExpressivGetLowerFaceActionPower(emoState);
+                        expressivStates[lowerFaceAction] = lowerFacePower;
 
-//                std::cout << expressivStates[EXP_SMILE] << std::endl;
-//                std::cout << expressivStates[EXP_CLENCH] << std::endl;
+                        // Set mood
+                        if      (expressivStates[EXP_LAUGH]       >= 1.0) mood = HAPPY;
+                        else if (expressivStates[EXP_SMILE]       >= 1.0) mood = RELAXED;
+                        else if (expressivStates[EXP_CLENCH]      >= 1.0) mood = STRESSED;
+                        else if (expressivStates[EXP_SMIRK_LEFT]  >= 1.0) mood = SAD;
+                        else if (expressivStates[EXP_SMIRK_RIGHT] >= 1.0) mood = SAD;
+                        else                                              mood = UNKNOWN;
+                    }
+                    break;
 
-                // Set mood
-                if (expressivStates[EXP_LAUGH] >= 1.0) mood = HAPPY;
-                else if (expressivStates[EXP_SMILE] >= 1.0) mood = RELAXED;
-                else if (expressivStates[EXP_CLENCH] >= 1.0) mood = STRESSED;
-                else if (expressivStates[EXP_SMIRK_LEFT] >= 1.0 ||
-                         expressivStates[EXP_SMIRK_RIGHT] >= 1.0) mood = SAD;
-                else mood = UNKNOWN;
+                    // Affectiv Suite
+                    case 1:
+                    {
+                        // Read affectiv state
+                        if      (ES_AffectivGetExcitementShortTermScore(emoState) >= 1.0) mood = HAPPY;
+                        else if (ES_AffectivGetEngagementBoredomScore(emoState)   >= 1.0) mood = SAD;
+                        else if (ES_AffectivGetMeditationScore(emoState)          >= 1.0) mood = RELAXED;
+                        else if (ES_AffectivGetFrustrationScore(emoState)         >= 1.0) mood = STRESSED;
+                        else                                                              mood = UNKNOWN;
+                    }
+                    break;
+                    default:
+                    {
+
+                    }
+                    break;
+                }
 
                 // Call function to handle mood change
-                if (mood != lastMood) emit moodChanged(moodString[mood]);
-                lastMood = mood;
+                if (mood != lastMood) {
+                    lastMood = mood;
+                    emit moodChanged(moodString[mood]);
+                }
             }
         }
         else if (eventErrorCode != EDK_NO_EVENT)
         {
+            qDebug() << "Internal error in Emotiv Engine!";
+
             // Error occured -> Stop trying
             emit connectionChanged("Internal error in Emotiv Engine!");
-            qDebug() << "Internal error in Emotiv Engine!";
             break;
         }
-
-        // Notify
-        //emit connectionChanged("Disconnected to Emotiv Engine");
     }
 }
 
@@ -142,12 +201,12 @@ void EpocWorker::disconnect()
     if (!connected) return;
 
     clearCache();
-    connected = (EE_EngineDisconnect() == EDK_OK);
 
-    // Notify
-    emit connectionChanged("Disconnected to Emotiv Engine");
+    connected = !(EE_EngineDisconnect() == EDK_OK);
 
-    qDebug() << "EmoEngine disconnected!";
+    qDebug() << "EmoEngine disconnected!" << endl;
+
+    emit connectionChanged(false);
 }
 
 /*******************

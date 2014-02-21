@@ -5,5 +5,6 @@
         <file>Resources/sad.png</file>
         <file>Resources/relaxed.png</file>
         <file>Resources/happy.png</file>
+        <file>Resources/unknown.png</file>
     </qresource>
 </RCC>
