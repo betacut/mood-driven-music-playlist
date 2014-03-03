@@ -19,7 +19,7 @@ QVector<Song>& SettingsPlaylistDialog::getMoodPlaylist(Mood mood) {
         case Mood::BOREDOM:     return boredomList;     break;
         //case Mood::MEDITATION:  return meditationList;  break;
         //case Mood::FRUSTRATION: return frustrationList; break;
-    default: break;
+        default: break;
     }
 }
 

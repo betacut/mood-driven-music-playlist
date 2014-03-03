@@ -68,22 +68,26 @@ private slots:
     void loadImage(QString);
     void updateSongInfo();
     void changePlaylist();
-    void playPlaylist(Mood);
+    void switchPlaylist();
 
 private:
     static const QString DEFAULT_IMAGE_STR;
 
     Ui::MainWindow *ui;
     SettingsPlaylistDialog *pConf;
+
     QNetworkAccessManager *m_netwManager;
     QMediaPlayer *player;
     QMediaPlaylist *qPlaylist;
     QVector<Song> playlist;
     QListWidgetItem* prevItem;
+
     MusicSource musicSource;
     Mood currentMood;
+    bool switchPlaylistOnSongEnd;
 
     void setEmoControls(bool);
+    void fetchPlaylist();
 };
 
 #endif // MAINWINDOW_H

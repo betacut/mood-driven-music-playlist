@@ -168,25 +168,30 @@ void EpocWorker::monitorEmotionState()
                     // Affectiv Suite
                     case 1:
                     {
+                        float shortExcitement = ES_AffectivGetExcitementShortTermScore(emoState);
+                        float longExcitement  = ES_AffectivGetExcitementLongTermScore(emoState);
+                        float engagement      = ES_AffectivGetEngagementBoredomScore(emoState);
+                        float boredom         = 1.0 - ES_AffectivGetEngagementBoredomScore(emoState);
+                        float meditation      = ES_AffectivGetMeditationScore(emoState);
+                        float frustration     = ES_AffectivGetFrustrationScore(emoState);
+
                         // Read affectiv state
-                        if (ES_AffectivGetExcitementShortTermScore(emoState) > EXCITEMENTSHORTTERMLIMIT) {
+                        if (shortExcitement > EXCITEMENTSHORTTERMLIMIT) {
                             moodType  = Mood::EXCITEMENT;
-                            moodPower = ES_AffectivGetExcitementShortTermScore(emoState);
+                            moodPower = shortExcitement;
                         }
-                        else if(ES_AffectivGetExcitementLongTermScore(emoState) >= EXCITEMENTLONGTERMLIMIT) {
+                        else if(longExcitement >= EXCITEMENTLONGTERMLIMIT) {
                             //moodType  = Mood::EXCITEMENT;
-                            //moodPower = ES_AffectivGetExcitementLongTermScore(emoState);
+                            //moodPower = longExcitement;
                         }
-                        else if (ES_AffectivGetEngagementBoredomScore(emoState) >= ENGAGEMENTLIMIT) {
+                        else if (engagement >= ENGAGEMENTLIMIT) {
                             moodType  = Mood::ENGAGEMENT;
-                            moodPower = ES_AffectivGetEngagementBoredomScore(emoState);
+                            moodPower = engagement;
                         }
-                        else if ( (1.0 - ES_AffectivGetEngagementBoredomScore(emoState)) >= BOREDOMLIMIT) {
+                        else if (boredom >= BOREDOMLIMIT) {
                             moodType  = Mood::BOREDOM;
-                            moodPower = (1.0 - ES_AffectivGetEngagementBoredomScore(emoState));
+                            moodPower = boredom;
                         }
-                        //else if (ES_AffectivGetMeditationScore(emoState)          >= 1.0) {moodType=Mood::MEDITATION;  moodPower=ES_AffectivGetMeditationScore(emoState);}
-                        //else if (ES_AffectivGetFrustrationScore(emoState)         >= 1.0) {moodType=Mood::FRUSTRATION; moodPower=ES_AffectivGetFrustrationScore(emoState);}
                     }
                     break;
                 }

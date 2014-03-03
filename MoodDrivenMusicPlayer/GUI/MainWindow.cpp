@@ -1,12 +1,14 @@
 #include <ctime>
+#include <algorithm>
+#include <QMediaMetaData>
 
-#include "Utility/Logger.h"
 #include "mainwindow.h"
+#include "Utility/Logger.h"
 
 const QString MainWindow::DEFAULT_IMAGE_STR = ":/images/Resources/cover_missing.png";
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), ui(new Ui::MainWindow), prevItem(NULL), musicSource(MainWindow::LOCAL)
+    QMainWindow(parent), ui(new Ui::MainWindow), prevItem(NULL), musicSource(MainWindow::LOCAL), switchPlaylistOnSongEnd(false)
 {
     ui->setupUi(this);
 
@@ -125,26 +127,39 @@ void MainWindow::slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus status)
 {
     qDebug() << "[STATUS] Player Media: " << status;
 
-    if (status == QMediaPlayer::LoadingMedia) {
-        ui->label_mediastate->setText("Loading...");
-    } else if (status == QMediaPlayer::LoadedMedia) {
-
-    } else if (status == QMediaPlayer::StalledMedia) {
-        ui->label_mediastate->setText("Stalled...");
-    } else if (status == QMediaPlayer::BufferedMedia) {
+    switch (status) {
+        case QMediaPlayer::LoadingMedia:
+            ui->label_mediastate->setText("Loading...");
+            break;
+        case QMediaPlayer::LoadedMedia:
+            break;
+        case QMediaPlayer::StalledMedia:
+            ui->label_mediastate->setText("Stalled...");
+            break;
+        case QMediaPlayer::BufferedMedia:
         ui->label_mediastate->setText("Ready");
-        if (player->state() == QMediaPlayer::PlayingState)
-            ui->label_mediastate->setText("Playing");
-        else
-            ui->label_mediastate->setText("Ready");
-    } else if (status == QMediaPlayer::InvalidMedia) {
-        ui->label_mediastate->setText("Error");
-        //qPlaylist->setPlaybackMode(QMediaPlaylist::CurrentItemOnce);
-        //player->stop();
-    } else if (status == QMediaPlayer::NoMedia) {
-        ui->label_mediastate->setText("No Media");
-    } else {
-        ui->label_mediastate->setText("");
+            if (player->state() == QMediaPlayer::PlayingState)
+                ui->label_mediastate->setText("Playing");
+            else
+                ui->label_mediastate->setText("Ready");
+            break;
+        case QMediaPlayer::EndOfMedia:
+            break;
+        case QMediaPlayer::NoMedia:
+            ui->label_mediastate->setText("No Media");
+            break;
+        case QMediaPlayer::InvalidMedia:
+            ui->label_mediastate->setText("Error");
+            break;
+        default:
+            ui->label_mediastate->setText("");
+            break;
+    }
+
+    // Playlist change queued
+    if (switchPlaylistOnSongEnd) {
+        switchPlaylistOnSongEnd = false;
+        switchPlaylist();
     }
 }
 
@@ -186,6 +201,20 @@ void MainWindow::updateSongInfo()
 {
     if (qPlaylist->currentMedia().isNull()) return;
 
+    /*
+    if (player->isMetaDataAvailable()) {
+        qDebug() << "Meta - Coverart URL: " << player->metaData(QMediaMetaData::CoverArtUrlLarge);
+        QVariant imgvar = player->metaData(QMediaMetaData::CoverArtImage);
+        qDebug() << "Meta - Coverart: " << imgvar;
+        if (!imgvar.isNull()) {
+            QPixmap cover;
+            ui->image_cover->setPixmap(cover.fromImage(imgvar.value<QImage>()));
+        }
+        qDebug() << "Meta - Artist: " << player->metaData(QMediaMetaData::AlbumArtist);
+        qDebug() << "Meta - Title: " << player->metaData(QMediaMetaData::Title);
+    }
+    */
+
     // Find the current song
     int currentIndex = qPlaylist->currentIndex();
     Song currentSong = playlist.at(currentIndex);
@@ -206,16 +235,16 @@ void MainWindow::updateSongInfo()
 void MainWindow::changePlaylist()
 {
     // Only play changed playlist if local source
-    if (musicSource == LOCAL) playPlaylist(currentMood);
+    if (musicSource == LOCAL) switchPlaylist();
 }
 
 /**
- * @brief MainWindow::playChoosePlaylist
- * @param mood
+ * @brief MainWindow::switchPlaylist
  */
-void MainWindow::playPlaylist(Mood mood) {
+void MainWindow::switchPlaylist() {
 
-    if (mood == Mood::UNKNOWN) return;
+    // Return if playlist change is queued
+    if (switchPlaylistOnSongEnd) return;
 
     // Stop and clear the previous playlist
     player->stop();
@@ -224,12 +253,19 @@ void MainWindow::playPlaylist(Mood mood) {
     prevItem = NULL;
 
     if (musicSource == LOCAL) {
-        playlist = pConf->getMoodPlaylist(mood);
+        playlist = pConf->getMoodPlaylist(currentMood);
+        showStatusMassage("");
         if (playlist.isEmpty()) {
-            this->showStatusMassage("Please first add songs for mood: " + mood.toString());
+            showStatusMassage("Please first add songs for mood: " + currentMood.toString());
             return;
         }
     }
+    else {
+        showStatusMassage("Stereomood Playlist received.");
+    }
+
+    // Shuffle the playlist
+    std::random_shuffle(playlist.begin(), playlist.end());
 
     // Fill new media playlist
     foreach (Song song, playlist) {
@@ -264,6 +300,7 @@ void MainWindow::setEmoConnection(bool connection)
 void MainWindow::setMood(Mood mood) {
 
     if (mood == currentMood) return;
+    currentMood = mood;
 
     // Set mood image and text
     QPixmap img;
@@ -275,33 +312,31 @@ void MainWindow::setMood(Mood mood) {
     }
     //ui->label_mood->setText(mood.toString());
 
-    // Get playlist (local or remote)
-    if (musicSource == LOCAL)
-        this->playPlaylist(mood);
-    else
-        emit playlistRequested(mood);
-
-    currentMood = mood;
+    // Change the playlist only when the song ends
+    if (player->mediaStatus() == QMediaPlayer::BufferedMedia) {
+        switchPlaylistOnSongEnd = true;
+        showStatusMassage("The Playlist will be switched on Song End");
+    }
+    fetchPlaylist();
 }
 
 /**
  * @brief MainWindow::setPlaylist
- * @param pl
+ * @param _playlist
  */
 void MainWindow::setPlaylist(QVector<Song> _playlist)
 {
-    //if (musicSource == LOCAL) return;
     playlist = _playlist;
-    this->playPlaylist(currentMood);
+    switchPlaylist();
 }
 
 /**
  * @brief MainWindow::setEmoControls
- * @param connected
+ * @param _connected
  */
-void MainWindow::setEmoControls(bool connected)
+void MainWindow::setEmoControls(bool _connected)
 {
-    if (connected)
+    if (_connected)
     {
         ui->btn_connect->setDisabled(true);
         ui->btn_disconnect->setEnabled(true);
@@ -321,6 +356,17 @@ void MainWindow::showStatusMassage(QString msg) {
     ui->statusBar->showMessage(msg);
 }
 
+/* Get playlist (local or remote) */
+void MainWindow::fetchPlaylist() {
+    if (musicSource == LOCAL) {
+        switchPlaylist();
+    }
+    else {
+        //showStatusMassage("Fetch Stereomood Playlist");
+        emit playlistRequested(currentMood);
+    }
+}
+
 
 /***************************CLICK-HANDLER********************************/
 
@@ -333,16 +379,14 @@ void MainWindow::on_actionClose_triggered()
 /* Choose engine type */
 void MainWindow::on_actionTo_EmoEngine_toggled(bool toggled)
 {
-    if (toggled) {
-        qDebug() << "[Click] EmoEngine";
-    }
-    else {
-        qDebug() << "[Click] EmoComposer";
-    }
+    if (toggled) qDebug() << "[Click] EmoEngine";
+    else         qDebug() << "[Click] EmoComposer";
 
+    // Disable connection buttons
     ui->btn_connect->setDisabled(true);
     ui->btn_disconnect->setDisabled(true);
 
+    // Disconnect engine
     emit disconnectRequested();
 }
 
@@ -355,10 +399,8 @@ void MainWindow::on_actionSet_Playlist_triggered()
 /* Choose music source */
 void MainWindow::on_actionLocal_toggled(bool toggled)
 {
-    if (toggled)
-        qDebug() << "[Click] Local";
-    else
-        qDebug() << "[Click] Stereomood";
+    if (toggled) qDebug() << "[Click] Local";
+    else         qDebug() << "[Click] Stereomood";
 
     // Clear the previous playlist
     playlist.clear();
@@ -369,11 +411,7 @@ void MainWindow::on_actionLocal_toggled(bool toggled)
     // Set source for playlist
     musicSource = (toggled) ? LOCAL : STEREOMOOD;
 
-    // Get playlist (local or remote)
-    if (musicSource == LOCAL)
-        this->playPlaylist(currentMood);
-    else
-        emit playlistRequested(currentMood);
+    fetchPlaylist();
 }
 
 /* Connect to or disconnect from emotiv engine */
@@ -381,9 +419,11 @@ void MainWindow::on_btn_connect_clicked()
 {
     qDebug() << "[Click] Connect Engine";
 
+    // Disable connection buttons
     ui->btn_connect->setDisabled(true);
     ui->btn_disconnect->setDisabled(true);
 
+    // Connect to selected engine
     if (this->ui->actionTo_EmoEngine->isChecked())
         emit connectRequested(0);
     else
@@ -395,6 +435,7 @@ void MainWindow::on_btn_disconnect_clicked()
 {
     qDebug() << "[Click] Disconnect Engine";
 
+    // Disable connection buttons
     ui->btn_connect->setDisabled(true);
     ui->btn_disconnect->setDisabled(true);
 
@@ -445,7 +486,7 @@ void MainWindow::on_btn_moodFlip_clicked()
         1,
         // Current timestamp
         timestamp,
-        // Manually
+        // Manually triggered
         true
     );
     setMood(nextMood);
