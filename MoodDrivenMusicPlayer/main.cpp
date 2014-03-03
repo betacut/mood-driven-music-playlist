@@ -4,7 +4,13 @@
 
 #include "Epoc/EpocWorker.h"
 #include "Stereomood/ReqHandler.h"
-#include "GUI/GUI.h"
+#include "GUI/MainWindow.h"
+
+/*
+ * TODO:
+ * - Analyse the excitement value over a long period (how long? song length?)
+ * - Speichern und Wiederherstellen der letzten Song Position?
+ */
 
 int main(int argc, char *argv[])
 {
@@ -19,51 +25,50 @@ int main(int argc, char *argv[])
     ReqHandler *reqhandler = new ReqHandler;
 
     // Create GUI
-    GUI *gui = new GUI;
+    MainWindow *window = new MainWindow;
 
-    // Notify Stereomood when mood changes
-    QObject::connect(epocWorker, SIGNAL(moodChanged(QString)),
-                     reqhandler, SLOT(execRequest(QString)));
+    qRegisterMetaType<Mood>("Mood");
 
     // Notify GUI when EmoEngine connection changes
     QObject::connect(epocWorker, SIGNAL(connectionChanged(bool)),
-                     gui, SLOT(setEmoConnection(bool)));
+                     window, SLOT(setEmoConnection(bool)));
 
     // Notify GUI when mood changes
-    QObject::connect(epocWorker, SIGNAL(moodChanged(QString)),
-                     gui, SLOT(setMood(QString)));
+    QObject::connect(epocWorker, SIGNAL(moodChanged(Mood)),
+                     window, SLOT(setMood(Mood)));
+
+    // Notify Stereomood when mood changes
+    QObject::connect(window, SIGNAL(playlistRequested(Mood)),
+                     reqhandler, SLOT(execRequest(Mood)));
 
     // Notify GUI when playlist changes
     QObject::connect(reqhandler, SIGNAL(playlistChanged(QVector<Song>)),
-                     gui, SLOT(setPlaylist(QVector<Song>)));
+                     window, SLOT(setPlaylist(QVector<Song>)));
 
     // Notify GUI when network status changes
     QObject::connect(reqhandler, SIGNAL(statusChanged(QString)),
-                     gui, SLOT(showStatusMassage(QString)));
+                     window, SLOT(showStatusMassage(QString)));
 
     // Set the active detection suite
-    QObject::connect(gui, SIGNAL(detectionSuiteChanged(unsigned int)),
+    QObject::connect(window, SIGNAL(detectionSuiteChanged(unsigned int)),
                      epocWorker, SLOT(setDetectionSuite(unsigned int)), Qt::DirectConnection);
 
     // Establish connection to EmoEngine
-    QObject::connect(gui, SIGNAL(connectRequested(unsigned int)),
+    QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(connect(unsigned int)), Qt::QueuedConnection);
-    QObject::connect(gui, SIGNAL(connectRequested(unsigned int)),
+    QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(monitorEmotionState()), Qt::QueuedConnection);
 
     // Close connection to EmoEngine
-    QObject::connect(gui, SIGNAL(disconnectRequested()),
+    QObject::connect(window, SIGNAL(disconnectRequested()),
                      epocWorker, SLOT(disconnect()), Qt::DirectConnection);
 
     //QMetaObject::invokeMethod(epocWorker, "connect", Qt::QueuedConnection);
     //QMetaObject::invokeMethod(epocWorker, "addUser", Qt::QueuedConnection);
     //QMetaObject::invokeMethod(epocWorker, "monitorEmotionState", Qt::QueuedConnection);
 
-/*
-    QString mood = "happy";
-    ReqHandler reqhandler;
-    reqhandler.execRequest(mood);
-*/
+    // Show GUI
+    window->show();
 
     // Start Application
     app.exec();
@@ -76,7 +81,7 @@ int main(int argc, char *argv[])
     // Clean memory
     delete epocWorker;
     delete reqhandler;
-    delete gui;
+    delete window;
 
     return 0;
 }

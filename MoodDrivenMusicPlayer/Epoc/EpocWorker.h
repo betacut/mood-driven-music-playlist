@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QThread>
 
+#include "Model/Mood.h"
 #include "edk.h"
 #include "edkErrorCode.h"
 #include "EmoStateDLL.h"
@@ -12,10 +13,10 @@
 #define EMOCOMPOSER_ADDRESS "127.0.0.1"
 #define EMOCOMPOSER_PORT    1726
 
-typedef enum Mood_enum {
-    UNKNOWN = 0, HAPPY, SAD, RELAXED, STRESSED
-} Mood;
-const QString moodString[] = {"unknown","happy","sad","relaxed", "stressed"};
+#define EXCITEMENTSHORTTERMLIMIT 0.69
+#define EXCITEMENTLONGTERMLIMIT  1.0
+#define ENGAGEMENTLIMIT          0.51
+#define BOREDOMLIMIT             0.5
 
 /**
  * @brief The EpocHandler class
@@ -29,7 +30,7 @@ public:
 
 signals:
     void connectionChanged(bool);
-    void moodChanged(QString);
+    void moodChanged(Mood);
 
 public slots:
     void setDetectionSuite(unsigned int);

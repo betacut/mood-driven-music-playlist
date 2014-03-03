@@ -12,29 +12,36 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = MoodDrivenMusicPlayer
 TEMPLATE = app
 
-HEADERS += GUI/GUI.h \
+HEADERS += \
     GUI/MainWindow.h \
+    GUI/SettingsPlaylistDialog.h \
+    Model/Mood.h \
+    Model/Song.h \
     Stereomood/ReqHandler.h \
     Stereomood/ReqURL.h \
-    Stereomood/Song.h \
-    Stereomood/XMLParser.h
-HEADERS +=
-HEADERS += Epoc/edk.h Epoc/edkErrorCode.h Epoc/EmoStateDLL.h Epoc/EpocWorker.h
+    Stereomood/XMLParser.h \
+    Epoc/edk.h \
+    Epoc/edkErrorCode.h \
+    Epoc/EmoStateDLL.h \
+    Epoc/EpocWorker.h \
+    Utility/Logger.h
 
 SOURCES += main.cpp \
     GUI/MainWindow.cpp \
+    GUI/SettingsPlaylistDialog.cpp \
+    Model/Song.cpp \
+    Model/Mood.cpp \
     Stereomood/ReqHandler.cpp \
     Stereomood/ReqURL.cpp \
-    Stereomood/Song.cpp \
-    Stereomood/XMLParser.cpp
-SOURCES += GUI/GUI.cpp
-SOURCES +=
-SOURCES += Epoc/EpocWorker.cpp
+    Stereomood/XMLParser.cpp \
+    Epoc/EpocWorker.cpp \
+    Utility/Logger.cpp
 
 # Link the emotiv epoc library
 LIBS += -Llib/ -ledk
 
-FORMS    += mainwindow.ui
+FORMS += mainwindow.ui \
+    settingsplaylistdialog.ui
 
 RESOURCES += \
     Resources.qrc

@@ -1,11 +1,13 @@
 #include <iostream>
 #include <map>
 
+#include <QDebug>
+
 #include "Epoc/EpocWorker.h"
-#include "GUI/GUI.h"
+#include "Utility/Logger.h"
 
 EpocWorker::EpocWorker(QObject *parent) :
-    QObject(parent), detectionSuite(0), userID(0), connected(false), lastMood(UNKNOWN)
+    QObject(parent), detectionSuite(1), userID(0), connected(false)
 {
     // Create thread to handle connection to emotiv engine
     thread = new QThread();
@@ -92,7 +94,9 @@ void EpocWorker::addUser()
     while (connected && !userAdded)
     {
         eventErrorCode = EE_EngineGetNextEvent(emoEvent);
-        qDebug() << "eventErrorCode " << eventErrorCode;
+
+        //qDebug() << "eventErrorCode " << eventErrorCode;
+
         if (eventErrorCode == EDK_OK)
         {
             eventType = EE_EmoEngineEventGetType(emoEvent);
@@ -118,9 +122,8 @@ void EpocWorker::addUser()
 
 void EpocWorker::monitorEmotionState()
 {
-    int eventErrorCode = 0;
     EE_Event_t eventType;
-    Mood mood;
+    int eventErrorCode  = 0;
 
     while (connected)
     {
@@ -135,9 +138,12 @@ void EpocWorker::monitorEmotionState()
                 // Read EmoState
                 EE_EmoEngineEventGetEmoState(emoEvent, emoState);
 
+                Mood::Type moodType = Mood::UNKNOWN;
+                float moodPower = 0.0;
+
                 // Read timestamp
-                const float timestamp = ES_GetTimeFromStart(emoState);
-                std::cout <<"New EmoState from user " << userID << " at " << timestamp << std::endl;
+                const float time = ES_GetTimeFromStart(emoState);
+                std::cout <<"New EmoState from user " << userID << " at " << time << std::endl;
 
                 switch (detectionSuite)
                 {
@@ -151,12 +157,11 @@ void EpocWorker::monitorEmotionState()
                         expressivStates[lowerFaceAction] = lowerFacePower;
 
                         // Set mood
-                        if      (expressivStates[EXP_LAUGH]       >= 1.0) mood = HAPPY;
-                        else if (expressivStates[EXP_SMILE]       >= 1.0) mood = RELAXED;
-                        else if (expressivStates[EXP_CLENCH]      >= 1.0) mood = STRESSED;
-                        else if (expressivStates[EXP_SMIRK_LEFT]  >= 1.0) mood = SAD;
-                        else if (expressivStates[EXP_SMIRK_RIGHT] >= 1.0) mood = SAD;
-                        else                                              mood = UNKNOWN;
+                        if      (expressivStates[EXP_LAUGH]       >= 1.0) {moodType=Mood::EXCITEMENT; moodPower=expressivStates[EXP_LAUGH];}
+                        else if (expressivStates[EXP_SMILE]       >= 1.0) {moodType=Mood::ENGAGEMENT; moodPower=expressivStates[EXP_SMILE];}
+                        else if (expressivStates[EXP_CLENCH]      >= 1.0) {moodType=Mood::BOREDOM;    moodPower=expressivStates[EXP_CLENCH];}
+                        //else if (expressivStates[EXP_SMIRK_LEFT]  >= 1.0) {moodType=Mood::MEDITATION;  moodPower=expressivStates[EXP_SMIRK_LEFT];}
+                        //else if (expressivStates[EXP_SMIRK_RIGHT] >= 1.0) {moodType=Mood::MEDITATION;  moodPower=expressivStates[EXP_SMIRK_RIGHT];}
                     }
                     break;
 
@@ -164,25 +169,52 @@ void EpocWorker::monitorEmotionState()
                     case 1:
                     {
                         // Read affectiv state
-                        if      (ES_AffectivGetExcitementShortTermScore(emoState) >= 1.0) mood = HAPPY;
-                        else if (ES_AffectivGetEngagementBoredomScore(emoState)   >= 1.0) mood = SAD;
-                        else if (ES_AffectivGetMeditationScore(emoState)          >= 1.0) mood = RELAXED;
-                        else if (ES_AffectivGetFrustrationScore(emoState)         >= 1.0) mood = STRESSED;
-                        else                                                              mood = UNKNOWN;
-                    }
-                    break;
-                    default:
-                    {
-
+                        if (ES_AffectivGetExcitementShortTermScore(emoState) > EXCITEMENTSHORTTERMLIMIT) {
+                            moodType  = Mood::EXCITEMENT;
+                            moodPower = ES_AffectivGetExcitementShortTermScore(emoState);
+                        }
+                        else if(ES_AffectivGetExcitementLongTermScore(emoState) >= EXCITEMENTLONGTERMLIMIT) {
+                            //moodType  = Mood::EXCITEMENT;
+                            //moodPower = ES_AffectivGetExcitementLongTermScore(emoState);
+                        }
+                        else if (ES_AffectivGetEngagementBoredomScore(emoState) >= ENGAGEMENTLIMIT) {
+                            moodType  = Mood::ENGAGEMENT;
+                            moodPower = ES_AffectivGetEngagementBoredomScore(emoState);
+                        }
+                        else if ( (1.0 - ES_AffectivGetEngagementBoredomScore(emoState)) >= BOREDOMLIMIT) {
+                            moodType  = Mood::BOREDOM;
+                            moodPower = (1.0 - ES_AffectivGetEngagementBoredomScore(emoState));
+                        }
+                        //else if (ES_AffectivGetMeditationScore(emoState)          >= 1.0) {moodType=Mood::MEDITATION;  moodPower=ES_AffectivGetMeditationScore(emoState);}
+                        //else if (ES_AffectivGetFrustrationScore(emoState)         >= 1.0) {moodType=Mood::FRUSTRATION; moodPower=ES_AffectivGetFrustrationScore(emoState);}
                     }
                     break;
                 }
 
                 // Call function to handle mood change
-                if (mood != lastMood) {
-                    lastMood = mood;
-                    emit moodChanged(moodString[mood]);
+                if (
+                        (moodType != lastMood.getType()) ||
+                        (moodPower > lastMood.getPower())
+                    ) {
+
+                    std::time_t timestamp = std::time(0);
+                    Mood nextMood(
+                        moodType,  // Mood type
+                        moodPower, // Detection power
+                        timestamp, // Detection time
+                        false      // Automatic detection
+                    );
+
+                    // Trigger mood change
+                    emit moodChanged(nextMood);
+
+                    // Log event
+                    Logger::getInstance() << nextMood;
+
+                    lastMood = nextMood;
                 }
+
+
             }
         }
         else if (eventErrorCode != EDK_NO_EVENT)
@@ -198,14 +230,14 @@ void EpocWorker::monitorEmotionState()
 
 void EpocWorker::disconnect()
 {
-    if (!connected) return;
+    if (connected) {
+        connected = false;
 
-    clearCache();
+        clearCache();
+        EE_EngineDisconnect();
 
-    connected = !(EE_EngineDisconnect() == EDK_OK);
-
-    qDebug() << "EmoEngine disconnected!" << endl;
-
+        qDebug() << "EmoEngine disconnected!" << endl;
+    }
     emit connectionChanged(false);
 }
 

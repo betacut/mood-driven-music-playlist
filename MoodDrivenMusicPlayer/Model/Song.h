@@ -10,6 +10,7 @@ public:
     int getId() const;
     QString getTitle() const;
     QString getArtist() const;
+    QString getName() const;
     QString getImageURL() const;
     QString getAudioURL() const;
 

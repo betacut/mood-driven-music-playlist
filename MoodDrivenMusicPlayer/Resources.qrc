@@ -1,10 +1,9 @@
 <RCC>
     <qresource prefix="/images">
         <file>Resources/cover_missing.png</file>
-        <file>Resources/stressed.png</file>
-        <file>Resources/sad.png</file>
-        <file>Resources/relaxed.png</file>
-        <file>Resources/happy.png</file>
+        <file>Resources/engaged.png</file>
+        <file>Resources/excited.png</file>
         <file>Resources/unknown.png</file>
+        <file>Resources/bored.png</file>
     </qresource>
 </RCC>

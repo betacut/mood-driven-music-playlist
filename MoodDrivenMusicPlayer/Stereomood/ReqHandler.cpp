@@ -14,10 +14,21 @@ ReqHandler::~ReqHandler() {}
 3) Connect sender object to receiver method
 4) Execute request
 ---------------------------------------------------------*/
-void ReqHandler::execRequest(QString mood){
-    if (mood == "unknown") return;
+void ReqHandler::execRequest(Mood mood){
+    QString query;
+    switch(mood.getType())
+    {
+        case Mood::EXCITEMENT:  query="MEDITATION"; break;
+        case Mood::ENGAGEMENT:  query="STUDYING";   break;
+        case Mood::BOREDOM:     query="ENERGETIC";  break;
+        //case Mood::MEDITATION:  query="MEDITATION"; break;
+        //case Mood::FRUSTRATION: query="ANGRY";      break;
+        case Mood::UNKNOWN:     query="UNKNOWN";    break;
+    }
 
-    QString urlAsString = reqURL.setMood(mood);
+    if (query == "UNKNOWN") return;
+
+    QString urlAsString = reqURL.setMood(query);
     QUrl url(urlAsString.toStdString().c_str());
 
     nam = new QNetworkAccessManager(this);

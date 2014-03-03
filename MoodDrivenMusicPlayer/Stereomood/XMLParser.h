@@ -7,8 +7,7 @@
 #include <QXmlStreamReader>
 #include <QVector>
 
-#include "GUI/GUI.h"
-#include "Stereomood/song.h"
+#include "Model/Song.h"
 
 using namespace std;
 

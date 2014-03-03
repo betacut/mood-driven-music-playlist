@@ -7,9 +7,9 @@
 #include <QNetworkReply>
 #include <QObject>
 
+#include "Model/Mood.h"
 #include "Stereomood/requrl.h"
 #include "Stereomood/xmlparser.h"
-#include "GUI/GUI.h"
 
 class ReqHandler : public QObject
 {
@@ -23,7 +23,7 @@ signals:
     void playlistChanged(QVector<Song>);
 
 public slots:
-    void execRequest(QString mood);
+    void execRequest(Mood mood);
 
 private:
     QNetworkAccessManager* nam;

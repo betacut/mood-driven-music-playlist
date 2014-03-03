@@ -19,11 +19,15 @@ Getter methods.
 int Song::getId() const {
     return this->id;
 }
-QString Song::getTitle() const {
-    return this->title;
+QString Song::getName() const
+{
+    return "" + (artist.size() ? artist + " - " : "") + title;
 }
 QString Song::getArtist() const {
     return this->artist;
+}
+QString Song::getTitle() const {
+    return this->title;
 }
 QString Song::getImageURL() const {
     return this->imageURL;
