@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <QMediaMetaData>
 
-#include "mainwindow.h"
+#include "MainWindow.h"
 #include "Utility/Logger.h"
 
 const QString MainWindow::DEFAULT_IMAGE_STR = ":/images/Resources/cover_missing.png";
@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // Create the playlist configuration dialog
     pConf = new SettingsPlaylistDialog;
+    pConf->loadPlaylistsFromXML();
 
     // Play the changed playlists
     connect(pConf, SIGNAL(playlistsChanged()),
@@ -230,12 +231,12 @@ void MainWindow::updateSongInfo()
 
 /**
  * @brief MainWindow::changePlaylist
- * @param mood
  */
 void MainWindow::changePlaylist()
 {
     // Only play changed playlist if local source
-    if (musicSource == LOCAL) switchPlaylist();
+    if (musicSource == LOCAL && currentMood != Mood::UNKNOWN)
+        switchPlaylist();
 }
 
 /**
@@ -243,7 +244,7 @@ void MainWindow::changePlaylist()
  */
 void MainWindow::switchPlaylist() {
 
-    // Return if playlist change is queued
+    // Return if playlist change is queued or mood unknown
     if (switchPlaylistOnSongEnd) return;
 
     // Stop and clear the previous playlist

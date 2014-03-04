@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
     // Establish connection to EmoEngine
     QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(connect(unsigned int)), Qt::QueuedConnection);
+    // Directly monitor emotion state after connection established
     QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(monitorEmotionState()), Qt::QueuedConnection);
 

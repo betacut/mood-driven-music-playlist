@@ -24,7 +24,8 @@ HEADERS += \
     Epoc/edkErrorCode.h \
     Epoc/EmoStateDLL.h \
     Epoc/EpocWorker.h \
-    Utility/Logger.h
+    Utility/Logger.h \
+    Utility/tinyxml2.h
 
 SOURCES += main.cpp \
     GUI/MainWindow.cpp \
@@ -35,7 +36,8 @@ SOURCES += main.cpp \
     Stereomood/ReqURL.cpp \
     Stereomood/XMLParser.cpp \
     Epoc/EpocWorker.cpp \
-    Utility/Logger.cpp
+    Utility/Logger.cpp \
+    Utility/tinyxml2.cpp
 
 # Link the emotiv epoc library
 LIBS += -Llib/ -ledk
