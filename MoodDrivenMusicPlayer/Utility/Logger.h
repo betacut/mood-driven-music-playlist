@@ -4,7 +4,6 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
-
 #include <QString>
 
 #include "Model/Mood.h"

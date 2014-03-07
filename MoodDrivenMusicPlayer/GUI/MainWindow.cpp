@@ -29,6 +29,9 @@ MainWindow::MainWindow(QWidget *parent) :
     pConf = new SettingsPlaylistDialog;
     pConf->loadPlaylistsFromXML();
 
+    // Create and connect the status console
+    statusConsole = new StatusConsole;
+
     // Play the changed playlists
     connect(pConf, SIGNAL(playlistsChanged()),
             this, SLOT(changePlaylist()));
@@ -76,113 +79,12 @@ MainWindow::~MainWindow()
     delete qPlaylist;
 
     delete pConf;
+    delete statusConsole;
     delete ui;
 }
 
 
-/*******************************SLOT-METHODS*************************************/
 
-/**
- * @brief MainWindow::slot_netwManagerFinished
- * @param reply
- */
-void MainWindow::slot_netwManagerFinished(QNetworkReply *reply)
-{
-    QPixmap pixmap;
-
-    // Network Error occured
-    if (reply->error() != QNetworkReply::NoError) {
-        qDebug() << "[NETWORK] " << reply->errorString();
-        pixmap.load(MainWindow::DEFAULT_IMAGE_STR);
-    } else {
-        pixmap.loadFromData(reply->readAll());
-        pixmap = pixmap.scaled(175, 175);
-    }
-    ui->image_cover->setPixmap(pixmap);
-}
-
-/**
- * @brief MainWindow::slot_playerErrorOccured
- * @param Error
- */
-void MainWindow::slot_playerErrorOccured(QMediaPlayer::Error error)
-{
-    qWarning() << "[ERROR] Media player error: " << error;
-    qWarning() << "[ERROR] error description: " << player->errorString();
-}
-
-/**
- * @brief MainWindow::slot_playerMediaChanged
- * @param media
- */
-void MainWindow::slot_playerMediaChanged(const QMediaContent &media)
-{
-    updateSongInfo();
-}
-
-/**
- * @brief MainWindow::slot_playerMediaStatusChanged
- * @param status
- */
-void MainWindow::slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus status)
-{
-    qDebug() << "[STATUS] Player Media: " << status;
-
-    switch (status) {
-        case QMediaPlayer::LoadingMedia:
-            ui->label_mediastate->setText("Loading...");
-            break;
-        case QMediaPlayer::LoadedMedia:
-            break;
-        case QMediaPlayer::StalledMedia:
-            ui->label_mediastate->setText("Stalled...");
-            break;
-        case QMediaPlayer::BufferedMedia:
-        ui->label_mediastate->setText("Ready");
-            if (player->state() == QMediaPlayer::PlayingState)
-                ui->label_mediastate->setText("Playing");
-            else
-                ui->label_mediastate->setText("Ready");
-            break;
-        case QMediaPlayer::EndOfMedia:
-            break;
-        case QMediaPlayer::NoMedia:
-            ui->label_mediastate->setText("No Media");
-            break;
-        case QMediaPlayer::InvalidMedia:
-            ui->label_mediastate->setText("Error");
-            break;
-        default:
-            ui->label_mediastate->setText("");
-            break;
-    }
-
-    // Playlist change queued
-    if (switchPlaylistOnSongEnd) {
-        switchPlaylistOnSongEnd = false;
-        switchPlaylist();
-    }
-}
-
-/**
- * @brief MainWindow::slot_playerStateChanged
- * @param state
- */
-void MainWindow::slot_playerStateChanged(QMediaPlayer::State state)
-{
-    qDebug() << "[STATUS] Player State: " << state;
-
-    if (state == QMediaPlayer::PlayingState) {
-        ui->button_play->setText("Pause");
-        ui->label_mediastate->setText("Playing");
-    } else if (state == QMediaPlayer::PausedState) {
-        ui->button_play->setText("Play");
-        ui->label_mediastate->setText("Paused");
-    } else if (state == QMediaPlayer::StoppedState) {
-        ui->button_play->setText("Play");
-        ui->label_mediastate->setText("Stopped");
-    }
-}
 
 /*******************PRIVATE-METHODS***********************/
 
@@ -255,14 +157,14 @@ void MainWindow::switchPlaylist() {
 
     if (musicSource == LOCAL) {
         playlist = pConf->getMoodPlaylist(currentMood);
-        showStatusMassage("");
+        showStatusMessage("");
         if (playlist.isEmpty()) {
-            showStatusMassage("Please first add songs for mood: " + currentMood.toString());
+            showStatusMessage("Please first add songs for mood: " + currentMood.toString());
             return;
         }
     }
     else {
-        showStatusMassage("Stereomood Playlist received.");
+        showStatusMessage("Stereomood Playlist received.");
     }
 
     // Shuffle the playlist
@@ -278,6 +180,8 @@ void MainWindow::switchPlaylist() {
     }
     //qPlaylist->shuffle();
     player->play();
+
+    playingMood = currentMood;
 }
 
 /*******************PUBLIC-METHODS***********************/
@@ -286,20 +190,18 @@ void MainWindow::switchPlaylist() {
  * @brief MainWindow::setEmoConnection
  * @param connection
  */
-void MainWindow::setEmoConnection(bool connection)
+void MainWindow::setEmoConnection(bool _connection, QString _message)
 {
-    if (connection) ui->label_engineStatus->setText("Connected to Emotiv Engine");
-    else            ui->label_engineStatus->setText("Not connected to Emotiv Engine");
-
-    setEmoControls(connection);
+    setEmoControls(_connection);
+    ui->label_engineStatus->setText(_message);
 }
 
 /**
  * @brief MainWindow::setMood
  * @param mood
  */
-void MainWindow::setMood(Mood mood) {
-
+void MainWindow::setMood(Mood mood)
+{
     if (mood == currentMood) return;
     currentMood = mood;
 
@@ -309,16 +211,23 @@ void MainWindow::setMood(Mood mood) {
         //ui->image_mood->setPixmap(img.scaled(50, 50));
         ui->image_mood->setPixmap(img);
     } else {
-        showStatusMassage("Error loading image: "+ mood.toString() + ".png");
+        showStatusMessage("Error loading image: "+ mood.toString() + ".png");
     }
     //ui->label_mood->setText(mood.toString());
 
-    // Change the playlist only when the song ends
-    if (player->mediaStatus() == QMediaPlayer::BufferedMedia) {
-        switchPlaylistOnSongEnd = true;
-        showStatusMassage("The Playlist will be switched on Song End");
+    // Don't change playlist if already playing
+    if (currentMood == playingMood) {
+        switchPlaylistOnSongEnd = false;
+        showStatusMessage("Mood already playing");
     }
-    fetchPlaylist();
+    else {
+        // Change the playlist only when the song ends
+        if (player->mediaStatus() == QMediaPlayer::BufferedMedia) {
+            switchPlaylistOnSongEnd = true;
+            showStatusMessage("Playlist will be switched on song end");
+        }
+        fetchPlaylist();
+    }
 }
 
 /**
@@ -329,6 +238,22 @@ void MainWindow::setPlaylist(QVector<Song> _playlist)
 {
     playlist = _playlist;
     switchPlaylist();
+}
+
+/**
+ * @brief MainWindow::showStatusMessage
+ * @param _message
+ */
+void MainWindow::showStatusMessage(QString _message) {
+    ui->statusBar->showMessage(_message);
+}
+
+/**
+ * @brief MainWindow::showStatusConsoleMessage
+ * @param _message
+ */
+void MainWindow::showStatusConsoleMessage(QString _message) {
+    statusConsole->addMessage(_message);
 }
 
 /**
@@ -349,21 +274,13 @@ void MainWindow::setEmoControls(bool _connected)
     }
 }
 
-/**
- * @brief MainWindow::showStatusMassage
- * @param msg
- */
-void MainWindow::showStatusMassage(QString msg) {
-    ui->statusBar->showMessage(msg);
-}
-
 /* Get playlist (local or remote) */
 void MainWindow::fetchPlaylist() {
     if (musicSource == LOCAL) {
         switchPlaylist();
     }
     else {
-        //showStatusMassage("Fetch Stereomood Playlist");
+        showStatusMessage("Fetch Stereomood Playlist");
         emit playlistRequested(currentMood);
     }
 }
@@ -389,6 +306,12 @@ void MainWindow::on_actionTo_EmoEngine_toggled(bool toggled)
 
     // Disconnect engine
     emit disconnectRequested();
+}
+
+/* Open status console */
+void MainWindow::on_actionStatus_Console_triggered()
+{
+    statusConsole->show();
 }
 
 /* Open configuration dialog */
@@ -443,6 +366,20 @@ void MainWindow::on_btn_disconnect_clicked()
     emit disconnectRequested();
 }
 
+/* Play previous song */
+void MainWindow::on_button_prev_clicked()
+{
+    qDebug() << "[Click] Previous Song";
+    qPlaylist->previous();
+}
+
+/* Play next song */
+void MainWindow::on_button_next_clicked()
+{
+    qDebug() << "[Click] Next Song";
+    qPlaylist->next();
+}
+
 /* Play/Pause song */
 void MainWindow::on_button_play_clicked()
 {
@@ -457,20 +394,6 @@ void MainWindow::on_button_play_clicked()
         qDebug() << "[Click] Play Music";
         player->play();
     }
-}
-
-/* Play previous song */
-void MainWindow::on_button_prev_clicked()
-{
-    qDebug() << "[Click] Previous Song";
-    qPlaylist->previous();
-}
-
-/* Play next song */
-void MainWindow::on_button_next_clicked()
-{
-    qDebug() << "[Click] Next Song";
-    qPlaylist->next();
 }
 
 /* Switch to next mood */
@@ -494,4 +417,109 @@ void MainWindow::on_btn_moodFlip_clicked()
 
     // Log event
     Logger::getInstance() << nextMood;
+}
+
+
+/*******************************SLOTS*************************************/
+
+/**
+ * @brief MainWindow::slot_netwManagerFinished
+ * @param reply
+ */
+void MainWindow::slot_netwManagerFinished(QNetworkReply *reply)
+{
+    QPixmap pixmap;
+
+    // Network Error occured
+    if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "[NETWORK] " << reply->errorString();
+        pixmap.load(MainWindow::DEFAULT_IMAGE_STR);
+    } else {
+        pixmap.loadFromData(reply->readAll());
+        pixmap = pixmap.scaled(175, 175);
+    }
+    ui->image_cover->setPixmap(pixmap);
+}
+
+/**
+ * @brief MainWindow::slot_playerErrorOccured
+ * @param Error
+ */
+void MainWindow::slot_playerErrorOccured(QMediaPlayer::Error error)
+{
+    qWarning() << "[ERROR] Media player error: " << error;
+    qWarning() << "[ERROR] error description: " << player->errorString();
+}
+
+/**
+ * @brief MainWindow::slot_playerMediaChanged
+ * @param media
+ */
+void MainWindow::slot_playerMediaChanged(const QMediaContent &media)
+{
+    updateSongInfo();
+}
+
+/**
+ * @brief MainWindow::slot_playerMediaStatusChanged
+ * @param status
+ */
+void MainWindow::slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus status)
+{
+    qDebug() << "[PLAYER] Media: " << status;
+
+    switch (status) {
+        case QMediaPlayer::LoadingMedia:
+            ui->label_mediastate->setText("Loading...");
+            break;
+        case QMediaPlayer::LoadedMedia:
+            break;
+        case QMediaPlayer::StalledMedia:
+            ui->label_mediastate->setText("Stalled...");
+            break;
+        case QMediaPlayer::BufferedMedia:
+        ui->label_mediastate->setText("Ready");
+            if (player->state() == QMediaPlayer::PlayingState)
+                ui->label_mediastate->setText("Playing");
+            else
+                ui->label_mediastate->setText("Ready");
+            break;
+        case QMediaPlayer::EndOfMedia:
+            break;
+        case QMediaPlayer::NoMedia:
+            ui->label_mediastate->setText("No Media");
+            break;
+        case QMediaPlayer::InvalidMedia:
+            ui->label_mediastate->setText("Error");
+            break;
+        default:
+            ui->label_mediastate->setText("");
+            break;
+    }
+
+    // Playlist change queued
+    if (switchPlaylistOnSongEnd) {
+        switchPlaylistOnSongEnd = false;
+        switchPlaylist();
+    }
+}
+
+/**
+ * @brief MainWindow::slot_playerStateChanged
+ * @param state
+ */
+void MainWindow::slot_playerStateChanged(QMediaPlayer::State state)
+{
+    qDebug() << "[PLAYER] State: " << state;
+
+    if (state == QMediaPlayer::PlayingState) {
+        ui->button_play->setText("Pause");
+        ui->label_mediastate->setText("Playing");
+    } else if (state == QMediaPlayer::PausedState) {
+        ui->button_play->setText("Play");
+        ui->label_mediastate->setText("Paused");
+    } else if (state == QMediaPlayer::StoppedState) {
+        ui->button_play->setText("Play");
+        ui->label_mediastate->setText("Stopped");
+    }
 }

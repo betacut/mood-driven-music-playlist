@@ -13,10 +13,10 @@
 #define EMOCOMPOSER_ADDRESS "127.0.0.1"
 #define EMOCOMPOSER_PORT    1726
 
-#define EXCITEMENTSHORTTERMLIMIT 0.69
-#define EXCITEMENTLONGTERMLIMIT  1.0
-#define ENGAGEMENTLIMIT          0.51
-#define BOREDOMLIMIT             0.5
+#define EXCITEMENT_SHORTTERM_LIMIT 0.69
+#define EXCITEMENT_LONGTERM_LIMIT  0.5
+#define ENGAGEMENT_LIMIT           0.5
+#define BOREDOM_LIMIT              0.5
 
 /**
  * @brief The EpocHandler class
@@ -29,7 +29,8 @@ public:
     virtual ~EpocWorker();
 
 signals:
-    void connectionChanged(bool);
+    void connectionChanged(bool, QString);
+    void statusReceived(QString);
     void moodChanged(Mood);
 
 public slots:

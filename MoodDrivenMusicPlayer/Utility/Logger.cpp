@@ -1,3 +1,5 @@
+#include <QCoreApplication>
+#include <QFileDialog>
 #include <QDate>
 #include <QDebug>
 
@@ -13,10 +15,15 @@ Logger& Logger::getInstance()
 
 Logger::Logger()
 {
+    QTime time = QTime::currentTime();
     QDate date = QDate::currentDate();
-    QString dateStr = date.toString(Qt::ISODate);
-    string filename =  dateStr.toStdString() + "_" + LOGGER_FILE;
-    qDebug() << "Open Log File: " << filename.c_str();
+    QString dateStr = date.toString(Qt::ISODate) + "-" + time.toString(Qt::ISODate);
+
+    QString filePath = QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + "/");
+    string filename =  filePath.toStdString() + dateStr.toStdString() + "_" + LOGGER_FILE;
+
+    qDebug() << "[LOGGER] Open Log File: " << filename.c_str();
+
     loggerFile = new ofstream (filename.c_str(), ios::trunc);
 
     // Create the top header
@@ -30,7 +37,7 @@ Logger::Logger()
 
 Logger::~Logger()
 {
-    qDebug() << "Close Log File.";
+    qDebug() << "[LOGGER] Close Log File.";
 
     loggerFile->close();
     delete loggerFile;

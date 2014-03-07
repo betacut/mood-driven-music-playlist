@@ -8,8 +8,8 @@
 
 /*
  * TODO:
+ * - Show in Emo System Status if signal is lost (signal status)
  * - Analyse the excitement value over a long period (how long? song length?)
- * - Speichern und Wiederherstellen der letzten Song Position?
  */
 
 int main(int argc, char *argv[])
@@ -30,8 +30,12 @@ int main(int argc, char *argv[])
     qRegisterMetaType<Mood>("Mood");
 
     // Notify GUI when EmoEngine connection changes
-    QObject::connect(epocWorker, SIGNAL(connectionChanged(bool)),
-                     window, SLOT(setEmoConnection(bool)));
+    QObject::connect(epocWorker, SIGNAL(connectionChanged(bool, QString)),
+                     window, SLOT(setEmoConnection(bool, QString)));
+
+    // Notify GUI when EmoEngine status received
+    QObject::connect(epocWorker, SIGNAL(statusReceived(QString)),
+                     window, SLOT(showStatusConsoleMessage(QString)));
 
     // Notify GUI when mood changes
     QObject::connect(epocWorker, SIGNAL(moodChanged(Mood)),
@@ -45,9 +49,11 @@ int main(int argc, char *argv[])
     QObject::connect(reqhandler, SIGNAL(playlistChanged(QVector<Song>)),
                      window, SLOT(setPlaylist(QVector<Song>)));
 
+    /*
     // Notify GUI when network status changes
     QObject::connect(reqhandler, SIGNAL(statusChanged(QString)),
                      window, SLOT(showStatusMassage(QString)));
+    */
 
     // Set the active detection suite
     QObject::connect(window, SIGNAL(detectionSuiteChanged(unsigned int)),
@@ -56,6 +62,7 @@ int main(int argc, char *argv[])
     // Establish connection to EmoEngine
     QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(connect(unsigned int)), Qt::QueuedConnection);
+
     // Directly monitor emotion state after connection established
     QObject::connect(window, SIGNAL(connectRequested(unsigned int)),
                      epocWorker, SLOT(monitorEmotionState()), Qt::QueuedConnection);

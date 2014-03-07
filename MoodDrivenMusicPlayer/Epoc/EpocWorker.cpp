@@ -1,6 +1,5 @@
 #include <iostream>
 #include <map>
-
 #include <QDebug>
 
 #include "Epoc/EpocWorker.h"
@@ -22,15 +21,15 @@ EpocWorker::~EpocWorker()
     delete thread;
 }
 
-/*******************
+/****************
  * Public slots *
- *******************/
+ ****************/
 
 void EpocWorker::setDetectionSuite(unsigned int newSuite)
 {
-    detectionSuite = newSuite;
+    qDebug() << "[EMO ENGINE] Detection Suite changed";
 
-    qDebug() << "[Emotiv] Detection Suite changed";
+    detectionSuite = newSuite;
 }
 
 void EpocWorker::connect(unsigned int connectionType)
@@ -41,15 +40,15 @@ void EpocWorker::connect(unsigned int connectionType)
         {
             if(EE_EngineConnect() == EDK_OK)
             {
-                qDebug() << "Connected to EmoEngine!";
-                connected = true;
+                qDebug() << "[EMO ENGINE] Connected to EmoEngine!";
 
-                qDebug() << "Start receiving mood data!";
+                connected = true;
                 createCache();
             }
             else
             {
-                qDebug() << "Could not connect to EmoEngine!";
+                qDebug() << "[EMO ENGINE] Could not connect to EmoEngine!";
+
                 connected = false;
             }
         }
@@ -58,30 +57,37 @@ void EpocWorker::connect(unsigned int connectionType)
         {
             if(EE_EngineRemoteConnect(EMOCOMPOSER_ADDRESS, EMOCOMPOSER_PORT) == EDK_OK)
             {
-                qDebug() << "Connected to EmoComposer!";
-                connected = true;
+                qDebug() << "[EMO ENGINE] Connected to EmoComposer!";
 
-                qDebug() << "Start receiving mood data!";
+                connected = true;
                 createCache();
             }
             else
             {
-                qDebug() << "Could not connect to EmoComposer! - " << EMOCOMPOSER_ADDRESS << ":" << EMOCOMPOSER_PORT;
+                qDebug() << "[EMO ENGINE] Could not connect to EmoComposer! - " << EMOCOMPOSER_ADDRESS << ":" << EMOCOMPOSER_PORT;
+
                 connected = false;
             }
         }
         break;
         default:
         {
-          qWarning() <<"Invalid option!";
+          qWarning() <<"[EMO ENGINE] Invalid option!";
         }
         break;
     }
 
-    emit connectionChanged(connected);
+    // Emit connection status
+    if (connected)
+    {
+        emit connectionChanged(true, "Connected to Emotiv Engine");
+    }
+    else
+    {
+        emit connectionChanged(false, "Could not connect to Emotiv Engine");
+    }
 
-    // Notify
-    if (connected) addUser();
+    addUser();
 }
 
 void EpocWorker::addUser()
@@ -103,8 +109,10 @@ void EpocWorker::addUser()
             if (eventType == EE_UserAdded)
             {
                 userErrorCode = EE_EmoEngineEventGetUserId(emoEvent, &userID);
-                std::cout << "User added: " << userID << std::endl;
                 userAdded = true;
+
+                qDebug() << "[EMO ENGINE] User added: " << userID;
+                qDebug() << "[EMO ENGINE] Start receiving mood data!";
 
                 // TODO: Error handling?
                 //printf("EE_EmoEngineEventGetUserId: %d, Error: %#x\n", userID, userErrorCode);
@@ -113,8 +121,9 @@ void EpocWorker::addUser()
         else if (eventErrorCode != EDK_NO_EVENT)
         {
             // Error occured -> Stop trying
-            emit connectionChanged("Internal error in Emotiv Engine!");
-            qDebug() << "Internal error in Emotiv Engine!";
+            qDebug() << "[EMO ENGINE] Internal error in Emotiv Engine!";
+
+            emit connectionChanged(false, "Internal error in Emotiv Engine!");
             break;
         }
     }
@@ -143,7 +152,7 @@ void EpocWorker::monitorEmotionState()
 
                 // Read timestamp
                 const float time = ES_GetTimeFromStart(emoState);
-                std::cout <<"New EmoState from user " << userID << " at " << time << std::endl;
+                QString statusMessage = "EmoState from user " + QString::number(userID) + " at " + QString::number(time) + "\n";
 
                 switch (detectionSuite)
                 {
@@ -172,25 +181,59 @@ void EpocWorker::monitorEmotionState()
                         float longExcitement  = ES_AffectivGetExcitementLongTermScore(emoState);
                         float engagement      = ES_AffectivGetEngagementBoredomScore(emoState);
                         float boredom         = 1.0 - ES_AffectivGetEngagementBoredomScore(emoState);
-                        float meditation      = ES_AffectivGetMeditationScore(emoState);
-                        float frustration     = ES_AffectivGetFrustrationScore(emoState);
+                        //float meditation      = ES_AffectivGetMeditationScore(emoState);
+                        //float frustration     = ES_AffectivGetFrustrationScore(emoState);
 
-                        // Read affectiv state
-                        if (shortExcitement > EXCITEMENTSHORTTERMLIMIT) {
+                        statusMessage += "Short Excitement: " + QString::number(shortExcitement) + "\n";
+                        statusMessage += "Long Excitement: " + QString::number(longExcitement) + "\n";
+                        statusMessage += "Engagement: " + QString::number(engagement) + "\n";
+                        statusMessage += "Boredom: " + QString::number(boredom) + "\n";
+                        emit statusReceived(statusMessage);
+
+                        //// Read affectiv state
+                        //// Old calculation
+                        /*
+                        if (shortExcitement > EXCITEMENT_SHORTTERM_LIMIT) {
                             moodType  = Mood::EXCITEMENT;
                             moodPower = shortExcitement;
                         }
-                        else if(longExcitement >= EXCITEMENTLONGTERMLIMIT) {
-                            //moodType  = Mood::EXCITEMENT;
-                            //moodPower = longExcitement;
+                        else if(longExcitement >= EXCITEMENT_LONGTERM_LIMIT) {
+                            moodType  = Mood::EXCITEMENT;
+                            moodPower = longExcitement;
                         }
-                        else if (engagement >= ENGAGEMENTLIMIT) {
+                        else if (engagement >= ENGAGEMENT_LIMIT) {
                             moodType  = Mood::ENGAGEMENT;
                             moodPower = engagement;
                         }
-                        else if (boredom >= BOREDOMLIMIT) {
+                        else if (boredom >= BOREDOM_LIMIT) {
                             moodType  = Mood::BOREDOM;
                             moodPower = boredom;
+                        }
+                        */
+
+                        //// New calculation
+                        ///
+                        // Excited
+                        if (longExcitement > EXCITEMENT_LONGTERM_LIMIT)
+                        {
+                            moodType  = Mood::EXCITEMENT;
+                            moodPower = longExcitement;
+                        }
+                        // Calm
+                        else
+                        {
+                            // Engaged
+                            if (engagement >= boredom || boredom == 1)
+                            {
+                                moodType  = Mood::ENGAGEMENT;
+                                moodPower = engagement;
+                            }
+                            // Bored
+                            else
+                            {
+                                moodType  = Mood::BOREDOM;
+                                moodPower = boredom;
+                            }
                         }
                     }
                     break;
@@ -203,31 +246,34 @@ void EpocWorker::monitorEmotionState()
                     ) {
 
                     std::time_t timestamp = std::time(0);
-                    Mood nextMood(
+                    lastMood = Mood(
                         moodType,  // Mood type
                         moodPower, // Detection power
                         timestamp, // Detection time
                         false      // Automatic detection
                     );
 
-                    // Trigger mood change
-                    emit moodChanged(nextMood);
-
                     // Log event
-                    Logger::getInstance() << nextMood;
+                    Logger::getInstance() << lastMood;
 
-                    lastMood = nextMood;
+                    // Trigger mood change
+                    emit moodChanged(lastMood);
                 }
-
-
             }
+        }
+        else if (eventErrorCode == EDK_CANNOT_ACQUIRE_DATA)
+        {
+            //qDebug() << "[EMO ENGINE] Can not acquire data";
+
+            emit statusReceived("Can not acquire data\n");
         }
         else if (eventErrorCode != EDK_NO_EVENT)
         {
-            qDebug() << "Internal error in Emotiv Engine!";
+            // Fatal error occured -> Stop monitoring and disconnect
+            qDebug() << "[EMO ENGINE] Internal error in Emotiv Engine!";
 
-            // Error occured -> Stop trying
-            emit connectionChanged("Internal error in Emotiv Engine!");
+            disconnect();
+            emit connectionChanged(false, "Internal error in Emotiv Engine!");
             break;
         }
     }
@@ -241,9 +287,10 @@ void EpocWorker::disconnect()
         clearCache();
         EE_EngineDisconnect();
 
-        qDebug() << "EmoEngine disconnected!" << endl;
+        qDebug() << "[EMO ENGINE] EmoEngine disconnected!";
     }
-    emit connectionChanged(false);
+
+    emit connectionChanged(false, "Not connected to Emotiv Engine");
 }
 
 /*******************

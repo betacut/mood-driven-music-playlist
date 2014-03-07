@@ -25,7 +25,8 @@ HEADERS += \
     Epoc/EmoStateDLL.h \
     Epoc/EpocWorker.h \
     Utility/Logger.h \
-    Utility/tinyxml2.h
+    Utility/tinyxml2.h \
+    GUI/StatusConsole.h
 
 SOURCES += main.cpp \
     GUI/MainWindow.cpp \
@@ -37,13 +38,15 @@ SOURCES += main.cpp \
     Stereomood/XMLParser.cpp \
     Epoc/EpocWorker.cpp \
     Utility/Logger.cpp \
-    Utility/tinyxml2.cpp
+    Utility/tinyxml2.cpp \
+    GUI/StatusConsole.cpp
 
 # Link the emotiv epoc library
 LIBS += -Llib/ -ledk
 
-FORMS += mainwindow.ui \
-    settingsplaylistdialog.ui
+FORMS += GUI/mainwindow.ui \
+    GUI/settingsplaylistdialog.ui \
+    GUI/statusconsole.ui
 
 RESOURCES += \
     Resources.qrc

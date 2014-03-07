@@ -13,6 +13,7 @@
 
 #include "ui_mainwindow.h"
 #include "SettingsPlaylistDialog.h"
+#include "StatusConsole.h"
 #include "Model/Song.h"
 #include "Model/Mood.h"
 
@@ -34,10 +35,11 @@ public:
     ~MainWindow();
 
 public slots:
-    void setEmoConnection(bool);
+    void setEmoConnection(bool, QString);
     void setMood(Mood);
     void setPlaylist(QVector<Song>);
-    void showStatusMassage(QString);
+    void showStatusMessage(QString);
+    void showStatusConsoleMessage(QString);
 
 signals:
     void detectionSuiteChanged(unsigned int);
@@ -46,25 +48,26 @@ signals:
     void disconnectRequested();
 
 private slots:
-    void slot_netwManagerFinished(QNetworkReply *);
-
-    void slot_playerErrorOccured(QMediaPlayer::Error);
-    void slot_playerMediaChanged(const QMediaContent &);
-    void slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus);
-    void slot_playerStateChanged(QMediaPlayer::State);
-
+// UI action bar events
+    void on_actionClose_triggered();
+    void on_actionTo_EmoEngine_toggled(bool toggled);
+    void on_actionStatus_Console_triggered();
+    void on_actionSet_Playlist_triggered();
+    void on_actionLocal_toggled(bool arg1);
+// UI button events
     void on_btn_connect_clicked();
     void on_btn_disconnect_clicked();
     void on_button_prev_clicked();
     void on_button_next_clicked();
     void on_button_play_clicked();
-
-    void on_actionTo_EmoEngine_toggled(bool toggled);
-    void on_actionSet_Playlist_triggered();
     void on_btn_moodFlip_clicked();
-    void on_actionClose_triggered();
-    void on_actionLocal_toggled(bool arg1);
-
+//
+    void slot_netwManagerFinished(QNetworkReply *);
+    void slot_playerErrorOccured(QMediaPlayer::Error);
+    void slot_playerMediaChanged(const QMediaContent &);
+    void slot_playerMediaStatusChanged(QMediaPlayer::MediaStatus);
+    void slot_playerStateChanged(QMediaPlayer::State);
+//
     void loadImage(QString);
     void updateSongInfo();
     void changePlaylist();
@@ -75,6 +78,7 @@ private:
 
     Ui::MainWindow *ui;
     SettingsPlaylistDialog *pConf;
+    StatusConsole *statusConsole;
 
     QNetworkAccessManager *m_netwManager;
     QMediaPlayer *player;
@@ -83,6 +87,7 @@ private:
     QListWidgetItem* prevItem;
 
     MusicSource musicSource;
+    Mood playingMood;
     Mood currentMood;
     bool switchPlaylistOnSongEnd;
 
